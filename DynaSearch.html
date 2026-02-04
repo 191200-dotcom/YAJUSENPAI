@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>DynaSearch</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(#2d2cc8, #06051a);
+  color: white;
+  overflow: hidden;
+}
+
+/* ===== Splash ===== */
+#splash {
+  position: fixed;
+  inset: 0;
+  background: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* 点々スピナー（白） */
+.dots {
+  width: 64px;
+  height: 64px;
+  position: relative;
+}
+
+.dots div {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: white;
+  border-radius: 50%;
+  animation: fade 1.2s linear infinite;
+}
+
+.dots div:nth-child(1)  { top: 0; left: 28px; animation-delay: 0s; }
+.dots div:nth-child(2)  { top: 8px; left: 44px; animation-delay: 0.1s; }
+.dots div:nth-child(3)  { top: 24px; left: 52px; animation-delay: 0.2s; }
+.dots div:nth-child(4)  { top: 40px; left: 44px; animation-delay: 0.3s; }
+.dots div:nth-child(5)  { top: 52px; left: 28px; animation-delay: 0.4s; }
+.dots div:nth-child(6)  { top: 40px; left: 8px;  animation-delay: 0.5s; }
+.dots div:nth-child(7)  { top: 24px; left: 0;  animation-delay: 0.6s; }
+.dots div:nth-child(8)  { top: 8px; left: 8px; animation-delay: 0.7s; }
+
+@keyframes fade {
+  0% { opacity: 1; }
+  100% { opacity: 0.2; }
+}
+
+/* ===== App ===== */
+#app {
+  display: none;
+  height: 100vh;
+}
+
+.container {
+  padding: 60px 14px 8px;
+}
+
+.logo {
+  font-size: 26px;
+  margin-bottom: 12px;
+}
+
+/* ===== Search ===== */
+.search-box {
+  display: flex;
+  background: white;
+  border-radius: 32px;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+}
+
+.search-box input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 18px;
+}
+
+.search-box button {
+  border: none;
+  background: none;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* ===== Row ===== */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+/* ===== Tabs ===== */
+.tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  flex: 1;
+}
+
+.tabs button {
+  border: none;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* ===== Right Info ===== */
+.info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+#clock {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.exit-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background: transparent;
+  cursor: pointer;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ===== WebView ===== */
+iframe {
+  width: 100%;
+  height: calc(100vh - 230px);
+  border: none;
+  background: white;
+}
+</style>
+</head>
+
+<body>
+
+<!-- Splash -->
+<div id="splash">
+  <div class="dots">
+    <div></div><div></div><div></div><div></div>
+    <div></div><div></div><div></div><div></div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div class="container">
+    <div class="logo">DynaSearch</div>
+
+    <div class="search-box">
+      <input id="searchInput" placeholder="検索">
+      <button onclick="webSearch()">🔍</button>
+    </div>
+
+    <div class="row">
+      <div class="tabs">
+        <button onclick="webSearch()">検索</button>
+        <button onclick="imageSearch()">画像</button>
+        <button onclick="videoSearch()">動画</button>
+        <button onclick="mapSearch()">地図</button>
+        <button onclick="newsSearch()">ニュース</button>
+        <button onclick="copilot()">Copilot</button>
+        <button onclick="openProxy()">Proxy</button>
+        <button onclick="openYouTube()">YouTube</button>
+      </div>
+
+      <div class="info">
+        <div id="clock"></div>
+        <button class="exit-btn" onclick="exitApp()"></button>
+      </div>
+    </div>
+  </div>
+
+  <iframe id="webview"></iframe>
+</div>
+
+<script>
+let lastQuery = "";
+
+/* Splash */
+setTimeout(() => {
+  splash.style.display = "none";
+  app.style.display = "block";
+}, 5000);
+
+/* JST Clock */
+function updateClock() {
+  const d = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  clock.textContent =
+    d.getUTCHours().toString().padStart(2,"0") + ":" +
+    d.getUTCMinutes().toString().padStart(2,"0") + ":" +
+    d.getUTCSeconds().toString().padStart(2,"0") + " JST";
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* Helpers */
+function getQuery() {
+  const q = searchInput.value.trim();
+  if (!q) return null;
+  lastQuery = q;
+  return encodeURIComponent(q);
+}
+
+/* Bing */
+function webSearch() {
+  const q = getQuery(); if (!q) return;
+  webview.src = `https://www.bing.com/search?q=${q}&cc=jp`;
+}
+function imageSearch() {
+  if (!lastQuery) return;
+  webview.src = `https://www.bing.com/images/search?q=${encodeURIComponent(lastQuery)}&cc=jp`;
+}
+function videoSearch() {
+  if (!lastQuery) return;
+  webview.src = `https://www.bing.com/videos/search?q=${encodeURIComponent(lastQuery)}&cc=jp`;
+}
+function mapSearch() {
+  if (!lastQuery) return;
+  webview.src = `https://www.bing.com/maps?q=${encodeURIComponent(lastQuery)}&cc=jp`;
+}
+function newsSearch() {
+  if (!lastQuery) return;
+  webview.src = `https://www.bing.com/news/search?q=${encodeURIComponent(lastQuery)}&cc=jp`;
+}
+function copilot() {
+  webview.src = "https://www.bing.com/chat";
+}
+
+/* External */
+function openProxy() {
+  webview.src = "https://ilovevcsa.spacetechnology.net/";
+}
+function openYouTube() {
+  webview.src = "https://loilonote-wk34.onrender.com/wkt";
+}
+
+/* Exit */
+function exitApp() {
+  location.replace("https://loilonote.app/_/");
+}
+
+/* Enter */
+searchInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") webSearch();
+});
+</script>
+
+</body>
+</html>
